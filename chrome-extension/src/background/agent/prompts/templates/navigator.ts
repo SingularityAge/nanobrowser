@@ -73,9 +73,9 @@ Common action sequences:
 - Include exact relevant urls if available, but do NOT make up any urls
 
 6. VISUAL CONTEXT:
-
-- When an image is provided, use it to understand the page layout
-- Bounding boxes with labels on their top right corner correspond to element indexes
+ - Rely primarily on the screenshot to understand the page layout and locate elements.
+ - Consult the interactive element list only if the screenshot does not provide enough detail.
+ - Bounding boxes with labels on their top right corner correspond to element indexes
 
 7. Form filling:
 

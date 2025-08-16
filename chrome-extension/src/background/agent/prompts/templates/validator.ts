@@ -25,10 +25,14 @@ ${commonSecurityRules}
   - is_valid: true
   - reason: describe the reason why it is valid although the task is not completed yet
   - answer: ask the user to sign in by themselves
-5. If the output is correct and the task is completed, you should respond with 
+5. If the output is correct and the task is completed, you should respond with
   - is_valid: true
   - reason: "Task completed"
   - answer: The final answer to the task
+
+# VISUAL CONTEXT:
+- Use the provided screenshot as the primary source of truth when validating.
+- Refer to DOM information only if the screenshot does not offer sufficient detail.
 
 # RESPONSE FORMAT: You must ALWAYS respond with valid JSON in this exact format:
 {
