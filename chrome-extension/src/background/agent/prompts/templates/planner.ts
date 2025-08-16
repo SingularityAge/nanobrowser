@@ -16,6 +16,7 @@ ${commonSecurityRules}
 
 3. If web_task is true, then helps break down tasks into smaller steps and reason about the current state
   - Analyze the current state and history
+  - Rely on the provided screenshot to understand the current page and use DOM details only as a fallback
   - Evaluate progress towards the ultimate goal
   - Identify potential challenges or roadblocks
   - Suggest the next high-level steps to take

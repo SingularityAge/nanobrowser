@@ -52,6 +52,7 @@ export const llmProviderModelNames = {
     'Llama-4-Maverick-17B-128E-Instruct-FP8',
     'Llama-4-Scout-17B-16E-Instruct-FP8',
   ],
+  holo1: ['holo1'],
   // Custom OpenAI providers don't have predefined models as they are user-defined
 };
 
@@ -184,6 +185,20 @@ export const llmProviderParameters = {
     },
   },
   [ProviderTypeEnum.Llama]: {
+    [AgentNameEnum.Planner]: {
+      temperature: 0.7,
+      topP: 0.9,
+    },
+    [AgentNameEnum.Navigator]: {
+      temperature: 0.3,
+      topP: 0.85,
+    },
+    [AgentNameEnum.Validator]: {
+      temperature: 0.1,
+      topP: 0.8,
+    },
+  },
+  holo1: {
     [AgentNameEnum.Planner]: {
       temperature: 0.7,
       topP: 0.9,
