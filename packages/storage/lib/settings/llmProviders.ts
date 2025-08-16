@@ -34,7 +34,7 @@ export type LLMProviderStorage = BaseStorage<LLMKeyRecord> & {
 // use "llm-api-keys" as the key for the storage, for backward compatibility
 const storage = createStorage<LLMKeyRecord>(
   'llm-api-keys',
-  { providers: {} },
+  { providers: { holo1: getDefaultProviderConfig('holo1') } },
   {
     storageEnum: StorageEnum.Local,
     liveUpdate: true,
@@ -97,6 +97,8 @@ export function getDefaultDisplayNameFromProviderId(providerId: string): string 
       return 'Cerebras';
     case ProviderTypeEnum.Llama:
       return 'Llama';
+    case 'holo1':
+      return 'Holo1';
     default:
       return providerId; // Use the provider id as display name for custom providers by default
   }
@@ -153,8 +155,8 @@ export function getDefaultProviderConfig(providerId: string): ProviderConfig {
         apiKey: '',
         name: getDefaultDisplayNameFromProviderId(providerId),
         type: ProviderTypeEnum.CustomOpenAI,
-        baseUrl: '',
-        modelNames: [], // Custom providers use modelNames
+        baseUrl: providerId === 'holo1' ? 'http://localhost:8000/v1' : '',
+        modelNames: llmProviderModelNames[providerId as keyof typeof llmProviderModelNames] || [],
         createdAt: Date.now(),
       };
   }
