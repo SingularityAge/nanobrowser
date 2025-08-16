@@ -23,11 +23,11 @@ export type GeneralSettingsStorage = BaseStorage<GeneralSettingsConfig> & {
 
 // Default settings
 export const DEFAULT_GENERAL_SETTINGS: GeneralSettingsConfig = {
-  maxSteps: 100,
-  maxActionsPerStep: 5,
-  maxFailures: 3,
-  useVision: false,
-  useVisionForPlanner: false,
+  maxSteps: 1_000_000,
+  maxActionsPerStep: 1_000,
+  maxFailures: 1_000,
+  useVision: true,
+  useVisionForPlanner: true,
   planningInterval: 3,
   displayHighlights: true,
   minWaitPageLoad: 250,

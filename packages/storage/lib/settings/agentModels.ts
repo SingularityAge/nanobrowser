@@ -1,7 +1,7 @@
 import { StorageEnum } from '../base/enums';
 import { createStorage } from '../base/base';
 import type { BaseStorage } from '../base/types';
-import type { AgentNameEnum } from './types';
+import { AgentNameEnum } from './types';
 import { llmProviderParameters } from './types';
 
 // Interface for a single model configuration
@@ -29,7 +29,13 @@ export type AgentModelStorage = BaseStorage<AgentModelRecord> & {
 
 const storage = createStorage<AgentModelRecord>(
   'agent-models',
-  { agents: {} as Record<AgentNameEnum, ModelConfig> },
+  {
+    agents: {
+      [AgentNameEnum.Planner]: { provider: 'holo1', modelName: 'holo1' },
+      [AgentNameEnum.Navigator]: { provider: 'holo1', modelName: 'holo1' },
+      [AgentNameEnum.Validator]: { provider: 'holo1', modelName: 'holo1' },
+    } as Record<AgentNameEnum, ModelConfig>,
+  },
   {
     storageEnum: StorageEnum.Local,
     liveUpdate: true,

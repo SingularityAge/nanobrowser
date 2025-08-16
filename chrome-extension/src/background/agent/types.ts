@@ -23,14 +23,14 @@ export interface AgentOptions {
 }
 
 export const DEFAULT_AGENT_OPTIONS: AgentOptions = {
-  maxSteps: 100,
-  maxActionsPerStep: 10,
-  maxFailures: 3,
-  maxValidatorFailures: 3,
+  maxSteps: 1_000_000,
+  maxActionsPerStep: 1_000,
+  maxFailures: 1_000,
+  maxValidatorFailures: 1_000,
   retryDelay: 10,
   maxInputTokens: 128000,
   maxErrorLength: 400,
-  useVision: false,
+  useVision: true,
   useVisionForPlanner: true,
   validateOutput: true,
   includeAttributes: DEFAULT_INCLUDE_ATTRIBUTES,

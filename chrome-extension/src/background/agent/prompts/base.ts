@@ -83,11 +83,11 @@ ${actionResultsDescription}
     if (browserState.screenshot && context.options.useVision) {
       return new HumanMessage({
         content: [
-          { type: 'text', text: stateDescription },
           {
             type: 'image_url',
             image_url: { url: `data:image/jpeg;base64,${browserState.screenshot}` },
           },
+          { type: 'text', text: stateDescription },
         ],
       });
     }
