@@ -8,54 +8,130 @@ import { ChatCerebras } from '@langchain/cerebras';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { ChatOllama } from '@langchain/ollama';
 import { ChatDeepSeek } from '@langchain/deepseek';
-import { AIMessage } from '@langchain/core/messages';
-import type { BaseMessage } from '@langchain/core/messages';
 
 const maxTokens = 1024 * 4;
 
+type ChatOpenAIConstructorArgs = ConstructorParameters<typeof ChatOpenAI>[0];
+type CompletionParameters = Parameters<ChatOpenAI['completionWithRetry']>;
+type CompletionRequest = CompletionParameters[0];
+type CompletionOptions = CompletionParameters[1];
+type CompletionResult = Awaited<ReturnType<ChatOpenAI['completionWithRetry']>>;
+
+interface LlamaMetric {
+  metric?: string;
+  value?: number;
+}
+
+interface LlamaCompletionMessage {
+  content?: unknown;
+  stop_reason?: string | null;
+}
+
+interface LlamaApiResponse {
+  id?: string;
+  completion_message?: LlamaCompletionMessage | null;
+  metrics?: LlamaMetric[];
+}
+
+const isAsyncIterable = (value: unknown): value is AsyncIterable<unknown> => {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as AsyncIterable<unknown>)[Symbol.asyncIterator] === 'function'
+  );
+};
+
+const isLlamaResponse = (value: unknown): value is LlamaApiResponse => {
+  if (isAsyncIterable(value) || typeof value !== 'object' || value === null) {
+    return false;
+  }
+  return 'completion_message' in value;
+};
+
+const extractModelName = (request: CompletionRequest): string => {
+  if (
+    request &&
+    typeof request === 'object' &&
+    'model' in request &&
+    typeof (request as { model?: unknown }).model === 'string'
+  ) {
+    return (request as { model: string }).model;
+  }
+  return 'llama-response';
+};
+
+const getMetricValue = (metrics: LlamaMetric[] | undefined, metricName: string): number => {
+  if (!Array.isArray(metrics)) {
+    return 0;
+  }
+  for (const metric of metrics) {
+    if (metric && metric.metric === metricName && typeof metric.value === 'number') {
+      return metric.value;
+    }
+  }
+  return 0;
+};
+
+const extractCompletionText = (message: LlamaCompletionMessage | null | undefined): string => {
+  if (!message) {
+    return '';
+  }
+  const { content } = message;
+  if (typeof content === 'string') {
+    return content;
+  }
+  if (
+    content &&
+    typeof content === 'object' &&
+    'text' in content &&
+    typeof (content as { text?: unknown }).text === 'string'
+  ) {
+    return (content as { text: string }).text;
+  }
+  return '';
+};
+
 // Custom ChatLlama class to handle Llama API response format
 class ChatLlama extends ChatOpenAI {
-  constructor(args: any) {
+  constructor(args: ChatOpenAIConstructorArgs) {
     super(args);
   }
 
   // Override the completionWithRetry method to intercept and transform the response
-  async completionWithRetry(request: any, options?: any): Promise<any> {
+  async completionWithRetry(request: CompletionRequest, options?: CompletionOptions): Promise<CompletionResult> {
     try {
-      // Make the request using the parent's implementation
       const response = await super.completionWithRetry(request, options);
 
-      // Check if this is a Llama API response format
-      if (response?.completion_message?.content?.text) {
-        // Transform Llama API response to OpenAI format
-        const transformedResponse = {
-          id: response.id || 'llama-response',
-          object: 'chat.completion',
-          created: Date.now(),
-          model: request.model,
-          choices: [
-            {
-              index: 0,
-              message: {
-                role: 'assistant',
-                content: response.completion_message.content.text,
-              },
-              finish_reason: response.completion_message.stop_reason || 'stop',
-            },
-          ],
-          usage: {
-            prompt_tokens: response.metrics?.find((m: any) => m.metric === 'num_prompt_tokens')?.value || 0,
-            completion_tokens: response.metrics?.find((m: any) => m.metric === 'num_completion_tokens')?.value || 0,
-            total_tokens: response.metrics?.find((m: any) => m.metric === 'num_total_tokens')?.value || 0,
-          },
-        };
-
-        return transformedResponse;
+      if (isAsyncIterable(response) || !isLlamaResponse(response)) {
+        return response;
       }
 
-      return response;
-    } catch (error: any) {
-      console.error(`[ChatLlama] Error during API call:`, error);
+      const llamaResponse = response;
+      const transformedResponse = {
+        id: llamaResponse.id ?? 'llama-response',
+        object: 'chat.completion',
+        created: Date.now(),
+        model: extractModelName(request),
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: 'assistant' as const,
+              content: extractCompletionText(llamaResponse.completion_message),
+            },
+            finish_reason: llamaResponse.completion_message?.stop_reason ?? 'stop',
+          },
+        ],
+        usage: {
+          prompt_tokens: getMetricValue(llamaResponse.metrics, 'num_prompt_tokens'),
+          completion_tokens: getMetricValue(llamaResponse.metrics, 'num_completion_tokens'),
+          total_tokens: getMetricValue(llamaResponse.metrics, 'num_total_tokens'),
+        },
+      };
+
+      return transformedResponse as CompletionResult;
+    } catch (error: unknown) {
+      console.error('[ChatLlama] Error during API call:', error);
       throw error;
     }
   }
