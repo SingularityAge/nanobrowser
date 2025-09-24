@@ -21,9 +21,9 @@ export interface AgentOptions {
 }
 
 export const DEFAULT_AGENT_OPTIONS: AgentOptions = {
-  maxSteps: 100,
+  maxSteps: 0,
   maxActionsPerStep: 10,
-  maxFailures: 3,
+  maxFailures: 0,
   retryDelay: 10,
   maxInputTokens: 128000,
   maxErrorLength: 400,
@@ -64,6 +64,13 @@ export class AgentContext {
     this.eventManager = eventManager;
     this.options = { ...DEFAULT_AGENT_OPTIONS, ...options };
 
+    if (this.options.maxSteps <= 0) {
+      this.options.maxSteps = Number.POSITIVE_INFINITY;
+    }
+    if (this.options.maxFailures <= 0) {
+      this.options.maxFailures = Number.POSITIVE_INFINITY;
+    }
+
     this.paused = false;
     this.stopped = false;
     this.nSteps = 0;
@@ -76,10 +83,11 @@ export class AgentContext {
   }
 
   async emitEvent(actor: Actors, state: ExecutionState, eventDetails: string) {
+    const maxStepsForEvent = Number.isFinite(this.options.maxSteps) ? this.options.maxSteps : -1;
     const event = new AgentEvent(actor, state, {
       taskId: this.taskId,
       step: this.nSteps,
-      maxSteps: this.options.maxSteps,
+      maxSteps: maxStepsForEvent,
       details: eventDetails,
     });
     await this.eventManager.emit(event);

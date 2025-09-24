@@ -218,7 +218,7 @@
     "message": "Máximo de Passos por Tarefa"
   },
   "options_general_maxSteps_desc": {
-    "message": "Limite de passos por tarefa"
+    "message": "Limite de passos por tarefa (0 para ilimitado)"
   },
   "options_general_maxActions": {
     "message": "Máximo de Ações por Passo"
@@ -230,7 +230,7 @@
     "message": "Tolerância a Falhas"
   },
   "options_general_maxFailures_desc": {
-    "message": "Quantas falhas consecutivas antes de parar"
+    "message": "Quantas falhas consecutivas antes de parar (0 para ilimitado)"
   },
   "options_general_enableVision": {
     "message": "Ativar Visão"
@@ -242,7 +242,7 @@
     "message": "Mostrar Destaques"
   },
   "options_general_displayHighlights_desc": {
-    "message": "Mostrar destaques visuais em elementos interativos (ex: botões, links, etc.)"
+    "message": "Mostrar destaques visuais em elementos interativos (sempre oculto durante a automação)"
   },
   "options_general_planningInterval": {
     "message": "Frequência de Replanejamento"

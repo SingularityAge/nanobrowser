@@ -30,6 +30,27 @@ import { AgentStepRecord } from '../history';
 import { type DOMHistoryElement } from '@src/background/browser/dom/history/view';
 
 const logger = createLogger('NavigatorAgent');
+const LOOP_REPETITION_THRESHOLD = 3;
+
+class ActionLoopTracker {
+  private currentSignature: string | null = null;
+  private repeatCount = 0;
+
+  record(signature: string): number {
+    if (this.currentSignature === signature) {
+      this.repeatCount += 1;
+    } else {
+      this.currentSignature = signature;
+      this.repeatCount = 1;
+    }
+    return this.repeatCount;
+  }
+
+  reset(): void {
+    this.currentSignature = null;
+    this.repeatCount = 0;
+  }
+}
 
 interface ParsedModelOutput {
   current_state?: {
@@ -76,6 +97,7 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
   private actionRegistry: NavigatorActionRegistry;
   private jsonSchema: Record<string, unknown>;
   private _stateHistory: BrowserStateHistory | null = null;
+  private loopTracker = new ActionLoopTracker();
 
   constructor(
     actionRegistry: NavigatorActionRegistry,
@@ -356,6 +378,10 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
     let errCount = 0;
     logger.info('Actions', actions);
 
+    // Reset the loop tracker at the beginning of every step so we only
+    // consider consecutive repetitions within the current batch of actions.
+    this.loopTracker.reset();
+
     const browserContext = this.context.browserContext;
     const browserState = await browserContext.getState(this.context.options.useVision);
     const cachedPathHashes = await calcBranchPathHashSet(browserState);
@@ -363,8 +389,25 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
     await browserContext.removeHighlight();
 
     for (const [i, action] of actions.entries()) {
-      const actionName = Object.keys(action)[0];
+      const actionName = Object.keys(action)[0] ?? 'unknown';
       const actionArgs = action[actionName];
+      const actionSignature = JSON.stringify(action);
+      const repetitionCount = this.loopTracker.record(actionSignature);
+
+      if (repetitionCount >= LOOP_REPETITION_THRESHOLD) {
+        const loopMessage = this.buildLoopMessage(actionName, actionArgs, repetitionCount);
+        logger.warning(loopMessage);
+        this.context.messageManager.addStateMessage(new HumanMessage({ content: loopMessage }));
+        results.push(
+          new ActionResult({
+            extractedContent: loopMessage,
+            includeInMemory: true,
+          }),
+        );
+        this.loopTracker.reset();
+        break;
+      }
+
       try {
         // check if the task is paused or stopped
         if (this.context.paused || this.context.stopped) {
@@ -410,6 +453,7 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
           }
         }
         results.push(result);
+        errCount = 0;
 
         // check if the task is paused or stopped
         if (this.context.paused || this.context.stopped) {
@@ -431,9 +475,6 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
         // unexpected error, emit event
         this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, errorMessage);
         errCount++;
-        if (errCount > 3) {
-          throw new Error('Too many errors in actions');
-        }
         results.push(
           new ActionResult({
             error: errorMessage,
@@ -441,9 +482,42 @@ export class NavigatorAgent extends BaseAgent<z.ZodType, NavigatorResult> {
             includeInMemory: true,
           }),
         );
+        if (errCount > 3) {
+          const recoveryMessage = this.buildRecoveryMessage(actionName);
+          logger.warning(recoveryMessage);
+          this.context.messageManager.addStateMessage(new HumanMessage({ content: recoveryMessage }));
+          results.push(
+            new ActionResult({
+              extractedContent: recoveryMessage,
+              includeInMemory: true,
+            }),
+          );
+          this.loopTracker.reset();
+          errCount = 0;
+          break;
+        }
       }
     }
     return results;
+  }
+
+  private buildLoopMessage(actionName: string, actionArgs: unknown, repetitionCount: number): string {
+    const argsDescription = this.describeActionArgs(actionArgs);
+    return `Loop guard: skipped repeating ${actionName}${argsDescription} after ${repetitionCount} attempts with no meaningful change. Consider a different tactic or shift to another subtask.`;
+  }
+
+  private describeActionArgs(actionArgs: unknown): string {
+    if (!actionArgs || typeof actionArgs !== 'object') {
+      return '';
+    }
+    const entries = Object.entries(actionArgs as Record<string, unknown>)
+      .filter(([, value]) => value !== undefined && value !== null)
+      .map(([key, value]) => `${key}=${String(value)}`);
+    return entries.length > 0 ? ` (${entries.join(', ')})` : '';
+  }
+
+  private buildRecoveryMessage(actionName: string): string {
+    return `Detected repeated errors while executing ${actionName}. Pivot to a fresh approach or re-evaluate the current goal before continuing.`;
   }
 
   /**

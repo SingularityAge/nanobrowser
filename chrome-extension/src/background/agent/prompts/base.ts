@@ -40,13 +40,16 @@ abstract class BasePrompt {
       formattedElementsText = 'empty page';
     }
 
-    let stepInfoDescription = '';
+    const stepInfoLines: string[] = [];
     if (context.stepInfo) {
-      stepInfoDescription = `Current step: ${context.stepInfo.stepNumber + 1}/${context.stepInfo.maxSteps}`;
+      const maxSteps = context.stepInfo.maxSteps;
+      const maxStepsDisplay = Number.isFinite(maxSteps) ? maxSteps : '∞';
+      stepInfoLines.push(`Current step: ${context.stepInfo.stepNumber + 1}/${maxStepsDisplay}`);
     }
 
     const timeStr = new Date().toISOString().slice(0, 16).replace('T', ' '); // Format: YYYY-MM-DD HH:mm
-    stepInfoDescription += `Current date and time: ${timeStr}`;
+    stepInfoLines.push(`Current date and time: ${timeStr}`);
+    const stepInfoDescription = stepInfoLines.join('\n');
 
     let actionResultsDescription = '';
     if (context.actionResults.length > 0) {

@@ -218,7 +218,7 @@
     "message": "Max Steps per Task"
   },
   "options_general_maxSteps_desc": {
-    "message": "Step limit per task"
+    "message": "Step limit per task (0 for unlimited)"
   },
   "options_general_maxActions": {
     "message": "Max Actions per Step"
@@ -230,7 +230,7 @@
     "message": "Failure Tolerance"
   },
   "options_general_maxFailures_desc": {
-    "message": "How many consecutive failures before stopping"
+    "message": "How many consecutive failures before stopping (0 for unlimited)"
   },
   "options_general_enableVision": {
     "message": "Enable Vision"
@@ -242,7 +242,7 @@
     "message": "Display Highlights"
   },
   "options_general_displayHighlights_desc": {
-    "message": "Show visual highlights on interactive elements (e.g. buttons, links, etc.)"
+    "message": "Show visual highlights on interactive elements (always hidden during automation)"
   },
   "options_general_planningInterval": {
     "message": "Replanning Frequency"

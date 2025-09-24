@@ -218,7 +218,7 @@
     "message": "單一任務的步驟上限"
   },
   "options_general_maxSteps_desc": {
-    "message": "限制單一任務的步驟數量"
+    "message": "限制單一任務的步驟數量（0 表示無限制）"
   },
   "options_general_maxActions": {
     "message": "單一步驟的動作上限"
@@ -230,7 +230,7 @@
     "message": "連續失敗容許次數"
   },
   "options_general_maxFailures_desc": {
-    "message": "在停止執行前，可容許的連續失敗次數"
+    "message": "在停止執行前，可容許的連續失敗次數（0 表示無限制）"
   },
   "options_general_enableVision": {
     "message": "啟用視覺能力"
@@ -242,7 +242,7 @@
     "message": "顯示醒目標示"
   },
   "options_general_displayHighlights_desc": {
-    "message": "在可互動的元素 (如按鈕、連結等) 上顯示視覺化醒目標示"
+    "message": "在可互動的元素 (如按鈕、連結等) 上顯示視覺化醒目標示（自動化期間會始終隱藏）"
   },
   "options_general_planningInterval": {
     "message": "重新規劃頻率"

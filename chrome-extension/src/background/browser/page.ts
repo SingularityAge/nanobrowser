@@ -67,6 +67,7 @@ export default class Page {
   private _validWebPage = false;
   private _cachedState: PageState | null = null;
   private _cachedStateClickableElementsHashes: CachedStateClickableElementsHashes | null = null;
+  private _lastMousePosition: { x: number; y: number } | null = null;
 
   constructor(tabId: number, url: string, title: string, config: Partial<BrowserContextConfig> = {}) {
     this._tabId = tabId;
@@ -397,8 +398,8 @@ export default class Page {
 
       // Get DOM content (equivalent to dom_service.get_clickable_elements)
       // This part would need to be implemented based on your DomService logic
-      // showHighlightElements is true if either useVision or displayHighlights is true
-      const displayHighlights = this._config.displayHighlights || useVision;
+      // Keep highlights hidden for stealth mode while still collecting DOM metadata
+      const displayHighlights = this._config.displayHighlights;
       const content = await this.getClickableElements(displayHighlights, focusElement);
       if (!content) {
         logger.warning('Failed to get clickable elements');
@@ -1152,22 +1153,30 @@ export default class Page {
 
       // Choose appropriate input method based on element properties
       if ((isContentEditable || tagName === 'input') && !isReadOnly && !isDisabled) {
-        // Clear content and set value directly
+        const htmlElement = element as ElementHandle<Element>;
+        await this._performHumanClick(htmlElement);
+
         await element.evaluate(el => {
           if (el instanceof HTMLElement) {
+            el.focus();
             el.textContent = '';
           }
           if ('value' in el) {
             (el as HTMLInputElement).value = '';
           }
-          // Dispatch events
           el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
         });
 
-        // Type the text with a small delay between keypresses
-        await element.type(text, { delay: 50 });
+        await this._humanPause(80, 200);
+        await element.focus();
+        await this._typeTextLikeHuman(text);
+        await this._humanPause(100, 220);
+        await element.evaluate(el => {
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        });
       } else {
+        const htmlElement = element as ElementHandle<Element>;
+        await this._performHumanClick(htmlElement);
         // Use direct value setting for other types of elements
         await element.evaluate((el, value) => {
           if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
@@ -1282,6 +1291,114 @@ export default class Page {
     }
   }
 
+  private _randomBetween(min: number, max: number): number {
+    return Math.random() * (max - min) + min;
+  }
+
+  private async _humanPause(minMs: number, maxMs: number): Promise<void> {
+    const duration = Math.round(this._randomBetween(minMs, maxMs));
+    if (duration <= 0) {
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, duration));
+  }
+
+  private async _moveMouseNaturallyTo(element: ElementHandle<Element>): Promise<boolean> {
+    if (!this._puppeteerPage) {
+      return false;
+    }
+
+    const box = await element.boundingBox();
+    if (!box) {
+      return false;
+    }
+
+    const start =
+      this._lastMousePosition ?? {
+        x: box.x + box.width * this._randomBetween(0.1, 0.4),
+        y: box.y + box.height * this._randomBetween(0.1, 0.4),
+      };
+
+    const target = {
+      x: box.x + box.width * this._randomBetween(0.35, 0.65),
+      y: box.y + box.height * this._randomBetween(0.35, 0.65),
+    };
+
+    const control = {
+      x: (start.x + target.x) / 2 + this._randomBetween(-30, 30),
+      y: (start.y + target.y) / 2 + this._randomBetween(-30, 30),
+    };
+
+    const distance = Math.hypot(target.x - start.x, target.y - start.y);
+    const steps = Math.max(12, Math.min(30, Math.round(distance / 8))); // ensure reasonable duration
+
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const inv = 1 - t;
+      const x =
+        inv * inv * start.x +
+        2 * inv * t * control.x +
+        t * t * target.x +
+        this._randomBetween(-1.5, 1.5);
+      const y =
+        inv * inv * start.y +
+        2 * inv * t * control.y +
+        t * t * target.y +
+        this._randomBetween(-1.5, 1.5);
+      await this._puppeteerPage.mouse.move(x, y);
+      await this._humanPause(8, 18);
+    }
+
+    this._lastMousePosition = target;
+    return true;
+  }
+
+  private async _performHumanClick(element: ElementHandle<Element>): Promise<boolean> {
+    if (!this._puppeteerPage) {
+      return false;
+    }
+
+    const moved = await this._moveMouseNaturallyTo(element);
+    if (!moved) {
+      return false;
+    }
+
+    await this._humanPause(60, 180);
+    await this._puppeteerPage.mouse.down();
+    await this._humanPause(40, 120);
+    await this._puppeteerPage.mouse.up();
+    await this._humanPause(70, 190);
+
+    const box = await element.boundingBox();
+    if (box) {
+      this._lastMousePosition = {
+        x: box.x + box.width / 2 + this._randomBetween(-2, 2),
+        y: box.y + box.height / 2 + this._randomBetween(-2, 2),
+      };
+    }
+
+    if (Math.random() < 0.3) {
+      await this._humanPause(80, 220);
+    }
+
+    return true;
+  }
+
+  private async _typeTextLikeHuman(text: string): Promise<void> {
+    if (!this._puppeteerPage) {
+      return;
+    }
+
+    const characters = Array.from(text);
+    for (const char of characters) {
+      const delay = this._randomBetween(40, 140);
+      await this._puppeteerPage.keyboard.type(char, { delay });
+      if (char === ' ' || char === ',' || char === '.' || Math.random() < 0.08) {
+        await this._humanPause(120, 260);
+      }
+    }
+  }
+
   async clickElementNode(useVision: boolean, elementNode: DOMElementNode): Promise<void> {
     if (!this._puppeteerPage) {
       throw new Error('Puppeteer is not connected');
@@ -1299,33 +1416,50 @@ export default class Page {
       }
 
       // Scroll element into view if needed
-      await this._scrollIntoViewIfNeeded(element);
+      const htmlElement = element as ElementHandle<Element>;
+      await this._scrollIntoViewIfNeeded(htmlElement);
 
+      let clicked = false;
       try {
-        // First attempt: Use Puppeteer's click method with timeout
-        await Promise.race([
-          element.click(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Click timeout')), 2000)),
-        ]);
-        await this._checkAndHandleNavigation();
-      } catch (error) {
-        // if URLNotAllowedError, throw it
-        if (error instanceof URLNotAllowedError) {
-          throw error;
-        }
-        // Second attempt: Use evaluate to perform a direct click
-        logger.info('Failed to click element, trying again', error);
+        clicked = await this._performHumanClick(htmlElement);
+      } catch (humanClickError) {
+        logger.debug(
+          `Natural click attempt failed, falling back: ${
+            humanClickError instanceof Error ? humanClickError.message : String(humanClickError)
+          }`,
+        );
+      }
+
+      if (!clicked) {
         try {
-          await element.evaluate(el => (el as HTMLElement).click());
-        } catch (secondError) {
-          // if URLNotAllowedError, throw it
-          if (secondError instanceof URLNotAllowedError) {
-            throw secondError;
+          // First attempt fallback: Puppeteer's click with timeout
+          await Promise.race([
+            htmlElement.click(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Click timeout')), 2000)),
+          ]);
+          clicked = true;
+        } catch (error) {
+          if (error instanceof URLNotAllowedError) {
+            throw error;
           }
-          throw new Error(
-            `Failed to click element: ${secondError instanceof Error ? secondError.message : String(secondError)}`,
-          );
+          // Second attempt fallback: use evaluate to perform a direct click
+          logger.info('Failed to click element, trying again', error);
+          try {
+            await htmlElement.evaluate(el => (el as HTMLElement).click());
+            clicked = true;
+          } catch (secondError) {
+            if (secondError instanceof URLNotAllowedError) {
+              throw secondError;
+            }
+            throw new Error(
+              `Failed to click element: ${secondError instanceof Error ? secondError.message : String(secondError)}`,
+            );
+          }
         }
+      }
+
+      if (clicked) {
+        await this._checkAndHandleNavigation();
       }
     } catch (error) {
       throw new Error(

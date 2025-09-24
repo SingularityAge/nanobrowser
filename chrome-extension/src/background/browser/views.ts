@@ -73,7 +73,7 @@ export interface BrowserContextConfig {
 
   /**
    * Display highlights on interactive elements
-   * @default true
+   * @default false
    */
   displayHighlights: boolean;
 }
@@ -89,7 +89,7 @@ export const DEFAULT_BROWSER_CONTEXT_CONFIG: BrowserContextConfig = {
   deniedUrls: [],
   includeDynamicAttributes: true,
   homePageUrl: 'about:blank',
-  displayHighlights: true,
+  displayHighlights: false,
 };
 
 export interface PageState extends DOMState {

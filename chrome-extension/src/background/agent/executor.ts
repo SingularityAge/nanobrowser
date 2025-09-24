@@ -130,7 +130,9 @@ export class Executor {
     // reset the step counter
     const context = this.context;
     context.nSteps = 0;
-    const allowedMaxSteps = this.context.options.maxSteps;
+    const configuredMaxSteps = this.context.options.maxSteps;
+    const hasStepLimit = Number.isFinite(configuredMaxSteps);
+    const allowedMaxSteps = hasStepLimit ? (configuredMaxSteps as number) : Number.MAX_SAFE_INTEGER;
 
     try {
       this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_START, this.context.taskId);
@@ -145,10 +147,11 @@ export class Executor {
       for (step = 0; step < allowedMaxSteps; step++) {
         context.stepInfo = {
           stepNumber: context.nSteps,
-          maxSteps: context.options.maxSteps,
+          maxSteps: hasStepLimit ? allowedMaxSteps : Number.POSITIVE_INFINITY,
         };
 
-        logger.info(`🔄 Step ${step + 1} / ${allowedMaxSteps}`);
+        const totalStepsLabel = hasStepLimit ? allowedMaxSteps : '∞';
+        logger.info(`🔄 Step ${step + 1} / ${totalStepsLabel}`);
         if (await this.shouldStop()) {
           break;
         }
@@ -183,7 +186,7 @@ export class Executor {
 
         // Track task completion
         void analytics.trackTaskComplete(this.context.taskId);
-      } else if (step >= allowedMaxSteps) {
+      } else if (hasStepLimit && step >= allowedMaxSteps) {
         logger.error('❌ Task failed: Max steps reached');
         this.context.emitEvent(Actors.SYSTEM, ExecutionState.TASK_FAIL, t('exec_errors_maxStepsReached'));
 
@@ -264,7 +267,8 @@ export class Executor {
       }
       context.consecutiveFailures++;
       logger.error(`Failed to execute planner: ${error}`);
-      if (context.consecutiveFailures >= context.options.maxFailures) {
+      const failureLimit = this.getFailureLimit();
+      if (failureLimit !== null && context.consecutiveFailures >= failureLimit) {
         throw new MaxFailuresReachedError(t('exec_errors_maxFailuresReached'));
       }
       return null;
@@ -306,7 +310,8 @@ export class Executor {
       }
       context.consecutiveFailures++;
       logger.error(`Failed to execute step: ${error}`);
-      if (context.consecutiveFailures >= context.options.maxFailures) {
+      const failureLimit = this.getFailureLimit();
+      if (failureLimit !== null && context.consecutiveFailures >= failureLimit) {
         throw new MaxFailuresReachedError(t('exec_errors_maxFailuresReached'));
       }
     }
@@ -326,12 +331,19 @@ export class Executor {
       }
     }
 
-    if (this.context.consecutiveFailures >= this.context.options.maxFailures) {
-      logger.error(`Stopping due to ${this.context.options.maxFailures} consecutive failures`);
+    const failureLimit = this.getFailureLimit();
+    if (failureLimit !== null && this.context.consecutiveFailures >= failureLimit) {
+      logger.error(`Stopping due to ${failureLimit} consecutive failures`);
       return true;
     }
 
     return false;
+  }
+
+  private getFailureLimit(): number | null {
+    return Number.isFinite(this.context.options.maxFailures)
+      ? (this.context.options.maxFailures as number)
+      : null;
   }
 
   async cancel(): Promise<void> {

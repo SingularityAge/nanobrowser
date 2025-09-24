@@ -27,6 +27,14 @@ export const GeneralSettings = ({ isDarkMode = false }: GeneralSettingsProps) =>
     setSettings(latestSettings);
   };
 
+  const parseNonNegativeInt = (value: string): number => {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed) || parsed < 0) {
+      return 0;
+    }
+    return parsed;
+  };
+
   return (
     <section className="space-y-6">
       <div
@@ -51,10 +59,9 @@ export const GeneralSettings = ({ isDarkMode = false }: GeneralSettingsProps) =>
             <input
               id="maxSteps"
               type="number"
-              min={1}
-              max={50}
+              min={0}
               value={settings.maxSteps}
-              onChange={e => updateSetting('maxSteps', Number.parseInt(e.target.value, 10))}
+              onChange={e => updateSetting('maxSteps', parseNonNegativeInt(e.target.value))}
               className={`w-20 rounded-md border ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-200' : 'border-gray-300 bg-white text-gray-700'} px-3 py-2`}
             />
           </div>
@@ -97,10 +104,9 @@ export const GeneralSettings = ({ isDarkMode = false }: GeneralSettingsProps) =>
             <input
               id="maxFailures"
               type="number"
-              min={1}
-              max={10}
+              min={0}
               value={settings.maxFailures}
-              onChange={e => updateSetting('maxFailures', Number.parseInt(e.target.value, 10))}
+              onChange={e => updateSetting('maxFailures', parseNonNegativeInt(e.target.value))}
               className={`w-20 rounded-md border ${isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-200' : 'border-gray-300 bg-white text-gray-700'} px-3 py-2`}
             />
           </div>
@@ -140,16 +146,10 @@ export const GeneralSettings = ({ isDarkMode = false }: GeneralSettingsProps) =>
               </p>
             </div>
             <div className="relative inline-flex cursor-pointer items-center">
-              <input
-                id="displayHighlights"
-                type="checkbox"
-                checked={settings.displayHighlights}
-                onChange={e => updateSetting('displayHighlights', e.target.checked)}
-                className="peer sr-only"
-              />
+              <input id="displayHighlights" type="checkbox" checked={false} disabled className="peer sr-only" />
               <label
                 htmlFor="displayHighlights"
-                className={`peer h-6 w-11 rounded-full ${isDarkMode ? 'bg-slate-600' : 'bg-gray-200'} after:absolute after:left-[2px] after:top-[2px] after:size-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300`}>
+                className={`peer h-6 w-11 cursor-not-allowed rounded-full opacity-50 ${isDarkMode ? 'bg-slate-600' : 'bg-gray-200'} after:absolute after:left-[2px] after:top-[2px] after:size-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300`}>
                 <span className="sr-only">{t('options_general_displayHighlights')}</span>
               </label>
             </div>

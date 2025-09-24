@@ -23,13 +23,13 @@ export type GeneralSettingsStorage = BaseStorage<GeneralSettingsConfig> & {
 
 // Default settings
 export const DEFAULT_GENERAL_SETTINGS: GeneralSettingsConfig = {
-  maxSteps: 100,
+  maxSteps: 0,
   maxActionsPerStep: 5,
-  maxFailures: 3,
+  maxFailures: 0,
   useVision: false,
   useVisionForPlanner: false,
   planningInterval: 3,
-  displayHighlights: true,
+  displayHighlights: false,
   minWaitPageLoad: 250,
   replayHistoricalTasks: false,
 };
@@ -48,18 +48,28 @@ export const generalSettingsStore: GeneralSettingsStorage = {
       ...settings,
     };
 
-    // If useVision is true, displayHighlights must also be true
-    if (updatedSettings.useVision && !updatedSettings.displayHighlights) {
-      updatedSettings.displayHighlights = true;
+    // Enforce non-negative limits and keep highlights disabled for stealth operation
+    if (updatedSettings.maxSteps < 0) {
+      updatedSettings.maxSteps = 0;
     }
+    if (updatedSettings.maxFailures < 0) {
+      updatedSettings.maxFailures = 0;
+    }
+    updatedSettings.displayHighlights = false;
 
     await storage.set(updatedSettings);
   },
   async getSettings() {
     const settings = await storage.get();
-    return {
+    const mergedSettings = {
       ...DEFAULT_GENERAL_SETTINGS,
       ...settings,
+    };
+    return {
+      ...mergedSettings,
+      maxSteps: mergedSettings.maxSteps < 0 ? 0 : mergedSettings.maxSteps,
+      maxFailures: mergedSettings.maxFailures < 0 ? 0 : mergedSettings.maxFailures,
+      displayHighlights: false,
     };
   },
   async resetToDefaults() {
