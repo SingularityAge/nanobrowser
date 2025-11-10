@@ -28,6 +28,34 @@ import { analytics } from '../services/analytics';
 
 const logger = createLogger('Executor');
 
+interface PlannerCadenceState {
+  interval: number;
+  lastAdjustmentStep: number;
+}
+
+/**
+ * Normalize the planner cadence interval for the current step and track when
+ * the cadence was last adjusted. This ensures mid-run updates to the agent
+ * options propagate through the executor loop without losing state.
+ */
+export function resolvePlannerInterval(context: AgentContext): PlannerCadenceState {
+  const rawInterval = context.options.planningInterval;
+  const numericInterval = Number(rawInterval);
+  const candidateInterval = Number.isFinite(numericInterval)
+    ? numericInterval
+    : context.currentPlannerInterval ?? 1;
+  const interval = Math.max(1, Math.round(candidateInterval));
+
+  const intervalChanged = context.currentPlannerInterval !== interval;
+  const needsInitialization = context.lastPlannerAdjustmentStep < 0;
+  const lastAdjustmentStep = intervalChanged || needsInitialization ? context.nSteps : context.lastPlannerAdjustmentStep;
+
+  return {
+    interval,
+    lastAdjustmentStep,
+  };
+}
+
 export interface ExecutorExtraArgs {
   plannerLLM?: BaseChatModel;
   extractorLLM?: BaseChatModel;
@@ -43,6 +71,7 @@ export class Executor {
   private readonly navigatorPrompt: NavigatorPrompt;
   private readonly generalSettings: GeneralSettingsConfig | undefined;
   private tasks: string[] = [];
+  private readonly initialPlanningInterval: number;
   constructor(
     task: string,
     taskId: string,
@@ -85,6 +114,11 @@ export class Executor {
     });
 
     this.context = context;
+    const plannerCadence = resolvePlannerInterval(context);
+    this.initialPlanningInterval = plannerCadence.interval;
+    this.context.options.planningInterval = plannerCadence.interval;
+    this.context.currentPlannerInterval = plannerCadence.interval;
+    this.context.lastPlannerAdjustmentStep = -1;
     // Initialize message history
     this.context.messageManager.initTaskMessages(this.navigatorPrompt.getSystemMessage(), task);
   }
@@ -130,6 +164,9 @@ export class Executor {
     // reset the step counter
     const context = this.context;
     context.nSteps = 0;
+    context.options.planningInterval = this.initialPlanningInterval;
+    context.currentPlannerInterval = this.initialPlanningInterval;
+    context.lastPlannerAdjustmentStep = -1;
     const allowedMaxSteps = this.context.options.maxSteps;
 
     try {
@@ -152,6 +189,11 @@ export class Executor {
         if (await this.shouldStop()) {
           break;
         }
+
+        const plannerCadence = resolvePlannerInterval(context);
+        context.currentPlannerInterval = plannerCadence.interval;
+        context.lastPlannerAdjustmentStep = plannerCadence.lastAdjustmentStep;
+        context.options.planningInterval = plannerCadence.interval;
 
         // Run planner periodically for guidance
         if (this.planner && (context.nSteps % context.options.planningInterval === 0 || navigatorDone)) {
