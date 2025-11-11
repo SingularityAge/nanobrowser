@@ -118,7 +118,7 @@ export class Executor {
     this.initialPlanningInterval = plannerCadence.interval;
     this.context.options.planningInterval = plannerCadence.interval;
     this.context.currentPlannerInterval = plannerCadence.interval;
-    this.context.lastPlannerAdjustmentStep = -1;
+    this.context.lastPlannerAdjustmentStep = plannerCadence.lastAdjustmentStep;
     // Initialize message history
     this.context.messageManager.initTaskMessages(this.navigatorPrompt.getSystemMessage(), task);
   }
