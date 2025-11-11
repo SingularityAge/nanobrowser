@@ -35,6 +35,7 @@ const SidePanel = () => {
   const [hasConfiguredModels, setHasConfiguredModels] = useState<boolean | null>(null); // null = loading, false = no models, true = has models
   const [isReplaying, setIsReplaying] = useState(false);
   const [replayEnabled, setReplayEnabled] = useState(true);
+  const [visionNavigationRatio, setVisionNavigationRatio] = useState(0.1);
   const sessionIdRef = useRef<string | null>(null);
   const isReplayingRef = useRef<boolean>(false);
   const portRef = useRef<chrome.runtime.Port | null>(null);
@@ -74,9 +75,11 @@ const SidePanel = () => {
     try {
       const settings = await generalSettingsStore.getSettings();
       setReplayEnabled(settings.replayHistoricalTasks);
+      setVisionNavigationRatio(settings.visionNavigationRatio ?? 0.1);
     } catch (error) {
       console.error('Error loading general settings:', error);
       setReplayEnabled(true);
+      setVisionNavigationRatio(0.1);
     }
   }, []);
 
@@ -952,6 +955,7 @@ const SidePanel = () => {
                         isDarkMode={isDarkMode}
                         historicalSessionId={isHistoricalSession && replayEnabled ? currentSessionId : null}
                         onReplay={handleReplay}
+                        visionNavigationRatio={visionNavigationRatio}
                       />
                     </div>
                     <div className="flex-1 overflow-y-auto">
@@ -989,6 +993,7 @@ const SidePanel = () => {
                       isDarkMode={isDarkMode}
                       historicalSessionId={isHistoricalSession && replayEnabled ? currentSessionId : null}
                       onReplay={handleReplay}
+                      visionNavigationRatio={visionNavigationRatio}
                     />
                   </div>
                 )}

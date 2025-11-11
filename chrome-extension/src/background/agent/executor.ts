@@ -70,6 +70,8 @@ export class Executor {
   private readonly plannerPrompt: PlannerPrompt;
   private readonly navigatorPrompt: NavigatorPrompt;
   private readonly generalSettings: GeneralSettingsConfig | undefined;
+  private readonly visionNavigationRatio: number;
+  private readonly visionStepInterval: number;
   private tasks: string[] = [];
   private initialPlanningInterval: number;
   constructor(
@@ -114,6 +116,10 @@ export class Executor {
     });
 
     this.context = context;
+    const ratio = this.generalSettings?.visionNavigationRatio ?? 0.1;
+    this.visionNavigationRatio = Number.isFinite(ratio) ? Math.min(Math.max(ratio, 0), 1) : 0.1;
+    const intervalCandidate = this.visionNavigationRatio > 0 ? Math.round(1 / this.visionNavigationRatio) : Number.POSITIVE_INFINITY;
+    this.visionStepInterval = intervalCandidate <= 0 ? Number.POSITIVE_INFINITY : intervalCandidate;
     const plannerCadence = resolvePlannerInterval(context);
     this.initialPlanningInterval = plannerCadence.interval;
     this.context.options.planningInterval = plannerCadence.interval;
@@ -184,6 +190,8 @@ export class Executor {
           stepNumber: context.nSteps,
           maxSteps: context.options.maxSteps,
         };
+
+        context.options.useVision = this.shouldUseVisionForStep(step);
 
         logger.info(`🔄 Step ${step + 1} / ${allowedMaxSteps}`);
         if (await this.shouldStop()) {
@@ -475,5 +483,14 @@ export class Executor {
     }
 
     return results;
+  }
+
+  private shouldUseVisionForStep(step: number): boolean {
+    if (this.visionStepInterval === Number.POSITIVE_INFINITY) {
+      return false;
+    }
+
+    const stepNumber = step + 1;
+    return stepNumber % this.visionStepInterval === 0;
   }
 }
