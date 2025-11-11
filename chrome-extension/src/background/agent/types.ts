@@ -27,7 +27,7 @@ export const DEFAULT_AGENT_OPTIONS: AgentOptions = {
   retryDelay: 10,
   maxInputTokens: 128000,
   maxErrorLength: 400,
-  useVision: false,
+  useVision: true,
   useVisionForPlanner: true,
   includeAttributes: DEFAULT_INCLUDE_ATTRIBUTES,
   planningInterval: 3,
