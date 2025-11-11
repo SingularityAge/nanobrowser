@@ -45,9 +45,72 @@ export function removeThinkTags(text: string): string {
  * @returns Parsed JSON object
  * @throws Error if JSON parsing fails
  */
-export function extractJsonFromModelOutput(content: string): Record<string, unknown> {
+export function extractJsonFromModelOutput(content: string): unknown {
+  let processedContent = content;
+
+  const attemptParse = (candidate: string): { success: true; value: unknown } | { success: false } => {
+    try {
+      return { success: true, value: JSON.parse(candidate) };
+    } catch (error) {
+      return { success: false };
+    }
+  };
+
+  const extractBalancedJson = (text: string): { success: true; value: unknown } | { success: false } => {
+    const stack: Array<{ char: '{' | '['; index: number }> = [];
+    let insideString = false;
+    let escape = false;
+
+    for (let index = 0; index < text.length; index++) {
+      const char = text[index];
+
+      if (escape) {
+        escape = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escape = true;
+        continue;
+      }
+
+      if (char === '"') {
+        insideString = !insideString;
+        continue;
+      }
+
+      if (insideString) {
+        continue;
+      }
+
+      if (char === '{' || char === '[') {
+        stack.push({ char, index });
+      } else if (char === '}' || char === ']') {
+        const last = stack.pop();
+        if (!last) {
+          continue;
+        }
+
+        const matches = (last.char === '{' && char === '}') || (last.char === '[' && char === ']');
+        if (!matches) {
+          stack.length = 0;
+          continue;
+        }
+
+        if (stack.length === 0) {
+          const candidate = text.slice(last.index, index + 1);
+          const parsed = attemptParse(candidate);
+          if (parsed.success) {
+            return parsed;
+          }
+        }
+      }
+    }
+
+    return { success: false };
+  };
+
   try {
-    let processedContent = content;
 
     // Handle Llama's tool call format first
     if (processedContent.includes('<|tool_call_start_id|>')) {
@@ -126,8 +189,21 @@ export function extractJsonFromModelOutput(content: string): Record<string, unkn
       }
     }
 
-    // Parse the cleaned content
-    return JSON.parse(processedContent);
+    processedContent = processedContent.trim();
+
+    // Try parsing the cleaned content directly first
+    const directParse = attemptParse(processedContent);
+    if (directParse.success) {
+      return directParse.value;
+    }
+
+    // If direct parsing fails, attempt to locate the first balanced JSON structure
+    const balancedJson = extractBalancedJson(processedContent);
+    if (balancedJson.success) {
+      return balancedJson.value;
+    }
+
+    throw new Error('Could not parse response.');
   } catch (e) {
     console.warn(`Failed to parse model output: ${content} ${e instanceof Error ? e.message : String(e)}`);
     throw new Error('Could not parse response.');

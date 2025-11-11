@@ -238,6 +238,9 @@
   "options_general_enableVision_desc": {
     "message": "Usar capacidade de visão dos modelos de linguagem (consome mais tokens para melhores resultados)"
   },
+  "options_general_visionAlwaysOn": {
+    "message": "A visão fica sempre ativada para oferecer os melhores resultados."
+  },
   "options_general_displayHighlights": {
     "message": "Mostrar Destaques"
   },
