@@ -30,16 +30,6 @@ export interface ControlState {
   g: number;
 }
 
-export interface DirectorContext {
-  tokenBufferRatio?: number;
-}
-
-export interface ConstraintTuning {
-  allowCrossDomainExploration: boolean;
-  plannerRelaxation: number;
-  navigatorBoldness: number;
-}
-
 const ALPHA_SUCCESS = 0.35;
 const ALPHA_TIMEOUT = 0.25;
 const ALPHA_LOOP = 0.2;
@@ -88,11 +78,6 @@ function smoothstep(x: number, a: number, b: number): number {
   return t * t * (3 - 2 * t);
 }
 
-const explorationRamp = (value: number): number => {
-  // Soften the curve so that the early portion of the ramp stays calm.
-  return Math.pow(clamp(value, 0, 1), 0.85);
-};
-
 export const DEFAULT_CONTROL_STATE: ControlState = {
   emaSuccess: 1,
   emaTimeouts: 0,
@@ -103,76 +88,5 @@ export const DEFAULT_CONTROL_STATE: ControlState = {
 
 export const computeController = (state: ControlState, telemetry: Telemetry): ControlState => {
   return stepControl(state, telemetry);
-};
-
-const adjustTemperature = (base: number, exploration: number, role: Role): number => {
-  const maxBoost = role === 'planner' ? 0.65 : 0.45;
-  return clamp(base + maxBoost * exploration, 0, 2);
-};
-
-const adjustTopP = (base: number, exploration: number, role: Role): number => {
-  const maxBoost = role === 'planner' ? 0.25 : 0.18;
-  return clamp(base + maxBoost * exploration, 0, 1);
-};
-
-const adjustPenalties = (base: number, glide: number): number => {
-  const relief = 0.35 * glide;
-  return clamp(base - relief, -2, 2);
-};
-
-const adjustTopK = (topK: number | undefined, exploration: number): number | undefined => {
-  if (typeof topK !== 'number') {
-    return topK;
-  }
-  const delta = Math.round(topK * (0.3 * exploration));
-  return clamp(topK + delta, 1, 2000);
-};
-
-const adjustMaxTokens = (
-  base: number,
-  exploration: number,
-  glide: number,
-  ctx: DirectorContext,
-): number => {
-  const explorationBonus = Math.round(base * (0.15 * exploration + 0.1 * glide));
-  const tokenBufferRatio = clamp(ctx.tokenBufferRatio ?? 0, 0, 1);
-  const bufferBonus = Math.round(base * 0.1 * tokenBufferRatio);
-  return clamp(base + explorationBonus + bufferBonus, 128, 320000);
-};
-
-export const directorMap = (
-  role: Role,
-  exploration: number,
-  glide: number,
-  defaults: Defaults,
-  ctx: DirectorContext = {},
-): LLMSettings => {
-  const baseline = defaults[role];
-  const tunedExploration = explorationRamp(exploration);
-
-  const temperature = adjustTemperature(baseline.temperature, tunedExploration, role);
-  const topP = adjustTopP(baseline.top_p, tunedExploration, role);
-  const frequencyPenalty = adjustPenalties(baseline.frequency_penalty, glide);
-  const presencePenalty = adjustPenalties(baseline.presence_penalty, glide * 0.75);
-  const topK = adjustTopK(baseline.top_k, tunedExploration);
-  const maxTokens = adjustMaxTokens(baseline.max_tokens, tunedExploration, glide, ctx);
-
-  return {
-    temperature,
-    top_p: topP,
-    frequency_penalty: frequencyPenalty,
-    presence_penalty: presencePenalty,
-    ...(typeof topK === 'number' ? { top_k: topK } : {}),
-    max_tokens: maxTokens,
-  };
-};
-
-export const constraintTuner = (glide: number): ConstraintTuning => {
-  const glideClamped = clamp(glide, 0, 1);
-  return {
-    allowCrossDomainExploration: glideClamped > 0.4,
-    plannerRelaxation: glideClamped,
-    navigatorBoldness: Math.sqrt(glideClamped),
-  };
 };
 
