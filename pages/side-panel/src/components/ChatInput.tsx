@@ -11,7 +11,6 @@ interface ChatInputProps {
   // Historical session ID - if provided, shows replay button instead of send button
   historicalSessionId?: string | null;
   onReplay?: (sessionId: string) => void;
-  visionNavigationRatio?: number;
 }
 
 // File attachment interface
@@ -30,7 +29,6 @@ export default function ChatInput({
   isDarkMode = false,
   historicalSessionId,
   onReplay,
-  visionNavigationRatio = 0.1,
 }: ChatInputProps) {
   const [text, setText] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
@@ -38,11 +36,6 @@ export default function ChatInput({
     () => disabled || (text.trim() === '' && attachedFiles.length === 0),
     [disabled, text, attachedFiles],
   );
-  const navigationIndicator = useMemo(() => {
-    const normalized = Math.min(Math.max(visionNavigationRatio, 0), 1);
-    const position = Math.min(100, Math.max(0, 100 - normalized * 100));
-    return { normalized, position };
-  }, [visionNavigationRatio]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -218,24 +211,6 @@ export default function ChatInput({
           placeholder={attachedFiles.length > 0 ? 'Add a message (optional)...' : t('chat_input_placeholder')}
           aria-label={t('chat_input_editor')}
         />
-
-        <div className="px-2 pb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-sm" style={{ color: '#9F9F9F' }} aria-hidden="true">
-              ☵
-            </span>
-            <div className="relative h-[2px] flex-1" style={{ backgroundColor: '#9F9F9F' }}>
-              <span
-                className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-                style={{ left: `${navigationIndicator.position}%`, backgroundColor: '#9F9F9F' }}
-                aria-hidden="true"
-              />
-            </div>
-            <span className="text-sm" style={{ color: '#9F9F9F' }} aria-hidden="true">
-              ⚇
-            </span>
-          </div>
-        </div>
 
         <div
           className={`flex items-center justify-between px-2 py-1.5 ${

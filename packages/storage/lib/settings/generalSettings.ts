@@ -12,7 +12,6 @@ export interface GeneralSettingsConfig {
   planningInterval: number;
   displayHighlights: boolean;
   replayHistoricalTasks: boolean;
-  visionNavigationRatio: number;
 }
 
 export type GeneralSettingsStorage = BaseStorage<GeneralSettingsConfig> & {
@@ -31,7 +30,6 @@ export const DEFAULT_GENERAL_SETTINGS: GeneralSettingsConfig = {
   planningInterval: 3,
   displayHighlights: true,
   replayHistoricalTasks: true,
-  visionNavigationRatio: 0.1,
 };
 
 const storage = createStorage<GeneralSettingsConfig>('general-settings', DEFAULT_GENERAL_SETTINGS, {
@@ -54,10 +52,6 @@ export const generalSettingsStore: GeneralSettingsStorage = {
     updatedSettings.useVision = true;
     updatedSettings.useVisionForPlanner = true;
     updatedSettings.replayHistoricalTasks = true;
-    const rawRatio = Number(updatedSettings.visionNavigationRatio);
-    const normalizedRatio = Number.isFinite(rawRatio) ? Math.min(Math.max(rawRatio, 0), 1) : DEFAULT_GENERAL_SETTINGS.visionNavigationRatio;
-    updatedSettings.visionNavigationRatio = normalizedRatio;
-
     await storage.set(updatedSettings);
   },
   async getSettings() {
@@ -71,10 +65,6 @@ export const generalSettingsStore: GeneralSettingsStorage = {
       useVision: true,
       useVisionForPlanner: true,
       replayHistoricalTasks: true,
-      visionNavigationRatio:
-        settings && typeof settings.visionNavigationRatio === 'number'
-          ? Math.min(Math.max(settings.visionNavigationRatio, 0), 1)
-          : DEFAULT_GENERAL_SETTINGS.visionNavigationRatio,
     };
   },
   async resetToDefaults() {

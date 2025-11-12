@@ -25,6 +25,7 @@ import type { AgentStepHistory } from './history';
 import type { GeneralSettingsConfig } from '@extension/storage';
 
 const logger = createLogger('Executor');
+const BASE_VISION_NAVIGATION_RATIO = 0.1;
 const VISION_RATIO_INCREMENT = 1 / 24;
 const VISION_RATIO_MAX = 0.5;
 const VISION_SUCCESS_DECAY = VISION_RATIO_MAX / 100;
@@ -118,8 +119,7 @@ export class Executor {
     });
 
     this.context = context;
-    const ratio = this.generalSettings?.visionNavigationRatio ?? 0.1;
-    const normalizedRatio = Number.isFinite(ratio) ? Math.min(Math.max(ratio, 0), VISION_RATIO_MAX) : 0.1;
+    const normalizedRatio = Math.min(Math.max(BASE_VISION_NAVIGATION_RATIO, 0), VISION_RATIO_MAX);
     this.baseVisionNavigationRatio = normalizedRatio;
     this.currentVisionNavigationRatio = normalizedRatio;
     this.visionUsageAccumulator = 0;
