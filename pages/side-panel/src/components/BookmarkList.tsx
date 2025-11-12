@@ -15,6 +15,7 @@ interface BookmarkListProps {
   onBookmarkUpdateTitle?: (id: number, title: string) => void;
   onBookmarkDelete?: (id: number) => void;
   onBookmarkReorder?: (draggedId: number, targetId: number) => void;
+  onAddShortcut?: () => void;
   isDarkMode?: boolean;
 }
 
@@ -24,6 +25,7 @@ const BookmarkList: React.FC<BookmarkListProps> = ({
   onBookmarkUpdateTitle,
   onBookmarkDelete,
   onBookmarkReorder,
+  onAddShortcut,
   isDarkMode = false,
 }) => {
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -82,9 +84,23 @@ const BookmarkList: React.FC<BookmarkListProps> = ({
 
   return (
     <div className="p-2">
-      <h3 className={`mb-3 text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-        {t('chat_bookmarks_header')}
-      </h3>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-[#333333]'}`}>
+          {t('chat_bookmarks_header')}
+        </h3>
+        {onAddShortcut && (
+          <button
+            type="button"
+            onClick={onAddShortcut}
+            title={t('chat_bookmarks_add')}
+            aria-label={t('chat_bookmarks_add')}
+            className={`rounded-full px-2 py-1 text-base transition-colors duration-150 ${
+              isDarkMode
+                ? 'bg-slate-800/80 text-gray-200 hover:bg-slate-700'
+                : 'bg-white text-[#333333] hover:bg-gray-100'
+            }`}>⨁</button>
+        )}
+      </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {bookmarks.map(bookmark => (
           <div
@@ -104,9 +120,9 @@ const BookmarkList: React.FC<BookmarkListProps> = ({
                   type="text"
                   value={editTitle}
                   onChange={e => setEditTitle(e.target.value)}
-                  className={`mr-2 grow rounded px-2 py-1 text-sm ${
-                    isDarkMode ? 'border-slate-600 bg-slate-700 text-gray-200' : 'border-gray-200 bg-white text-gray-700'
-                  } border`}
+                  className={`mr-2 grow rounded px-2 py-1 text-sm text-[#333333] placeholder:text-[#e3e3e3] ${
+                    isDarkMode ? 'border-slate-600 bg-[#f7f7f7]' : 'border-gray-200 bg-[#f7f7f7]'
+                  } border focus:outline-none focus:ring-2 focus:ring-[#626262]`}
                 />
                 <button
                   onClick={() => handleSaveEdit(bookmark.id)}
@@ -144,7 +160,9 @@ const BookmarkList: React.FC<BookmarkListProps> = ({
                     }}
                     className="w-full text-left">
                     <div
-                      className={`truncate pr-10 text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                      className={`truncate pr-10 text-sm font-medium ${
+                        isDarkMode ? 'text-gray-200' : 'text-[#333333]'
+                      }`}>
                       {bookmark.title}
                     </div>
                   </button>

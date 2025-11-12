@@ -86,7 +86,10 @@
     "message": "刪除工作階段"
   },
   "chat_bookmarks_header": {
-    "message": "快速入門"
+    "message": "捷徑"
+  },
+  "chat_bookmarks_add": {
+    "message": "新增捷徑"
   },
   "chat_bookmarks_saveEdit": {
     "message": "儲存變更"

@@ -88,6 +88,9 @@
   "chat_bookmarks_header": {
     "message": "Shortcuts"
   },
+  "chat_bookmarks_add": {
+    "message": "Add new shortcut"
+  },
   "chat_bookmarks_saveEdit": {
     "message": "Save changes"
   },

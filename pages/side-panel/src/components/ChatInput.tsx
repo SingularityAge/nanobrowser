@@ -199,14 +199,10 @@ export default function ChatInput({
           disabled={disabled}
           aria-disabled={disabled}
           rows={5}
-          className={`min-h-0 w-full flex-1 resize-none border-none p-2 focus:outline-none ${
+          className={`min-h-0 w-full flex-1 resize-none border-none p-2 focus:outline-none placeholder:text-[#9f9f9f] ${
             disabled
-              ? isDarkMode
-                ? 'cursor-not-allowed bg-slate-800 text-gray-400'
-                : 'cursor-not-allowed bg-gray-100 text-gray-500'
-              : isDarkMode
-                ? 'bg-slate-800 text-gray-200'
-                : 'bg-white'
+              ? 'cursor-not-allowed bg-[#e5e5e5] text-[#333333]/60'
+              : 'bg-[#f7f7f7] text-[#333333]'
           }`}
           placeholder={attachedFiles.length > 0 ? 'Add a message (optional)...' : t('chat_input_placeholder')}
           aria-label={t('chat_input_editor')}
@@ -268,8 +264,8 @@ export default function ChatInput({
               type="submit"
               disabled={isSendButtonDisabled}
               aria-disabled={isSendButtonDisabled}
-              className={`rounded-md bg-gray-700 px-3 py-1 text-white transition-colors hover:enabled:bg-gray-800 ${
-                isSendButtonDisabled ? 'cursor-not-allowed opacity-50' : ''
+              className={`rounded-md bg-[#626262] px-3 py-1 text-white transition-colors hover:enabled:bg-[#4f4f4f] ${
+                isSendButtonDisabled ? 'cursor-not-allowed opacity-60' : ''
               }`}>
               {t('chat_buttons_send')}
             </button>

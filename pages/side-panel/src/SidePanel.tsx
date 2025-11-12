@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type { FormEvent } from 'react';
 import { FiSettings } from 'react-icons/fi';
 import { PiPlusBold } from 'react-icons/pi';
 import { GrHistory } from 'react-icons/gr';
@@ -37,6 +38,9 @@ const SidePanel = () => {
   const [isReplaying, setIsReplaying] = useState(false);
   const [replayEnabled, setReplayEnabled] = useState(true);
   const [showRetryOptions, setShowRetryOptions] = useState(false);
+  const [showShortcutEditor, setShowShortcutEditor] = useState(false);
+  const [shortcutName, setShortcutName] = useState('');
+  const [shortcutPrompt, setShortcutPrompt] = useState('');
   const sessionIdRef = useRef<string | null>(null);
   const isReplayingRef = useRef<boolean>(false);
   const portRef = useRef<chrome.runtime.Port | null>(null);
@@ -817,6 +821,39 @@ const SidePanel = () => {
     }
   };
 
+  const handleShortcutEditorOpen = useCallback(() => {
+    setShortcutName('');
+    setShortcutPrompt('');
+    setShowShortcutEditor(true);
+  }, []);
+
+  const handleShortcutEditorClose = useCallback(() => {
+    setShowShortcutEditor(false);
+    setShortcutName('');
+    setShortcutPrompt('');
+  }, []);
+
+  const handleShortcutSave = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const name = shortcutName.trim();
+      const prompt = shortcutPrompt.trim();
+      if (!name || !prompt) {
+        return;
+      }
+
+      try {
+        await favoritesStorage.addPrompt(name, prompt);
+        const prompts = await favoritesStorage.getAllPrompts();
+        setFavoritePrompts(prompts);
+        handleShortcutEditorClose();
+      } catch (error) {
+        console.error('Failed to save shortcut:', error);
+      }
+    },
+    [shortcutName, shortcutPrompt, handleShortcutEditorClose],
+  );
+
   const handleBookmarkUpdateTitle = async (id: number, title: string) => {
     try {
       await favoritesStorage.updatePromptTitle(id, title);
@@ -884,7 +921,7 @@ const SidePanel = () => {
   // Voice input removed - cleanup only stops background connection
 
   return (
-    <div>
+    <div className="relative">
       <div
         className={`flex h-screen flex-col ${isDarkMode ? 'bg-slate-900' : 'bg-gray-100'} overflow-hidden border ${
           isDarkMode ? 'border-slate-700' : 'border-gray-200'
@@ -1036,6 +1073,7 @@ const SidePanel = () => {
                         onBookmarkUpdateTitle={handleBookmarkUpdateTitle}
                         onBookmarkDelete={handleBookmarkDelete}
                         onBookmarkReorder={handleBookmarkReorder}
+                        onAddShortcut={handleShortcutEditorOpen}
                         isDarkMode={isDarkMode}
                       />
                     </div>
@@ -1080,6 +1118,78 @@ const SidePanel = () => {
           </>
         )}
       </div>
+      {showShortcutEditor && (
+        <div className="absolute inset-0 z-50 flex items-start justify-center pt-6">
+          <button
+            type="button"
+            aria-label="Close shortcut editor"
+            onClick={handleShortcutEditorClose}
+            className="absolute inset-0 z-0 cursor-pointer bg-black/10 backdrop-blur-[27px]"
+          />
+          <form
+            onSubmit={handleShortcutSave}
+            className="relative z-10 flex flex-col gap-3 border border-[#d0d0d0] p-4 shadow-[0_0_30px_rgba(0,0,0,0.1)]"
+            style={{
+              width: '93%',
+              height: '38vh',
+              background: 'rgba(227, 227, 227, 0.62)',
+              borderRadius: '27px',
+              backdropFilter: 'blur(27px)',
+            }}>
+            <h2 className="pb-3 text-base font-semibold text-[#727272]">Shortcut editor</h2>
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="shortcut-editor-name"
+                className="text-xs font-medium uppercase tracking-wide text-[#727272]">
+                <span className="sr-only">Shortcut name</span>
+              </label>
+              <input
+                type="text"
+                id="shortcut-editor-name"
+                value={shortcutName}
+                onChange={event => setShortcutName(event.target.value)}
+                placeholder="Shortcut name"
+                className="w-full rounded-md border border-transparent bg-[#f7f7f7] px-3 py-2 text-sm text-[#333333] placeholder:text-[#e3e3e3] focus:outline-none focus:ring-2 focus:ring-[#626262]"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="shortcut-editor-prompt"
+                className="text-xs font-medium uppercase tracking-wide text-[#727272]">
+                <span className="sr-only">Shortcut prompt</span>
+              </label>
+              <textarea
+                value={shortcutPrompt}
+                id="shortcut-editor-prompt"
+                onChange={event => setShortcutPrompt(event.target.value)}
+                placeholder="What can I do for you?"
+                className="w-full resize-none rounded-md border border-transparent bg-[#f7f7f7] px-3 py-2 text-sm text-[#333333] placeholder:text-[#e3e3e3] focus:outline-none focus:ring-2 focus:ring-[#626262]"
+                style={{ height: '27vh' }}
+              />
+            </div>
+            <div className="mt-auto flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleShortcutEditorClose}
+                className="rounded-md bg-[#626262] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#4f4f4f]"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!shortcutName.trim() || !shortcutPrompt.trim()}
+                className={`rounded-md px-4 py-2 text-sm font-medium text-white transition-colors ${
+                  !shortcutName.trim() || !shortcutPrompt.trim()
+                    ? 'cursor-not-allowed bg-[#626262]/60'
+                    : 'bg-[#626262] hover:bg-[#4f4f4f]'
+                }`}
+              >
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 };

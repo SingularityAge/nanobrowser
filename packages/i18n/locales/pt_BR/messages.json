@@ -86,7 +86,10 @@
     "message": "Excluir sessão"
   },
   "chat_bookmarks_header": {
-    "message": "Início Rápido"
+    "message": "Atalhos"
+  },
+  "chat_bookmarks_add": {
+    "message": "Adicionar novo atalho"
   },
   "chat_bookmarks_saveEdit": {
     "message": "Salvar alterações"
