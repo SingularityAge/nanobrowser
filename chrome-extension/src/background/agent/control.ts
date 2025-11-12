@@ -44,36 +44,49 @@ const ALPHA_SUCCESS = 0.35;
 const ALPHA_TIMEOUT = 0.25;
 const ALPHA_LOOP = 0.2;
 const WEIGHT_FAIL = 0.7;
-const WEIGHT_TIMEOUT = 0.2;
+const WEIGHT_TO = 0.2;
 const WEIGHT_LOOP = 0.25;
 const SNAP_RESET = true;
 
-const MIN_SUCCESS_EMA = 0.05;
-const MAX_EMA = 0.999;
+const clamp = (v: number, lo = 0, hi = 1): number => Math.max(lo, Math.min(hi, v));
 
-const clamp = (value: number, min: number, max: number): number => {
-  if (Number.isNaN(value)) {
-    return min;
+export function stepControl(prev: ControlState, t: Telemetry): ControlState {
+  // Snap back on success
+  if (t.lastOutcomeSuccess && SNAP_RESET) {
+    return {
+      emaSuccess: 1.0,
+      emaTimeouts: Math.max(0, prev.emaTimeouts * 0.5),
+      emaLoop: Math.max(0, prev.emaLoop * 0.5),
+      e: 0.0,
+      g: 0.0,
+    };
   }
-  return Math.min(Math.max(value, min), max);
-};
 
-const ema = (prev: number, sample: number, alpha: number): number => {
-  const boundedSample = clamp(sample, 0, 1);
-  const boundedPrev = clamp(prev, 0, 1);
-  return alpha * boundedSample + (1 - alpha) * boundedPrev;
-};
+  // Update EMAs
+  const sNow = t.lastOutcomeSuccess ? 1 : 0;
+  const emaSuccess = ALPHA_SUCCESS * sNow + (1 - ALPHA_SUCCESS) * (prev.emaSuccess ?? 1);
+  const emaTimeouts = ALPHA_TIMEOUT * (t.timeoutHappened ? 1 : 0) + (1 - ALPHA_TIMEOUT) * (prev.emaTimeouts ?? 0);
+  const emaLoop = ALPHA_LOOP * (t.loopScore ?? 0) + (1 - ALPHA_LOOP) * (prev.emaLoop ?? 0);
 
-const smoothstep = (value: number, edge0: number, edge1: number): number => {
-  const t = clamp((value - edge0) / (edge1 - edge0), 0, 1);
+  // Frustration signal (higher when success EMA is low)
+  const failSignal = 1 - emaSuccess;
+
+  // Continuous exploration intensity
+  let e = WEIGHT_FAIL * failSignal + WEIGHT_TO * emaTimeouts + WEIGHT_LOOP * emaLoop;
+
+  // Soft clip and ease (S-curve) for nicer dynamics
+  e = clamp(0.5 * Math.tanh(2.2 * e) + 0.5, 0, 1);
+
+  // Goal glide kicks in only at higher e
+  const g = smoothstep(e, 0.55, 0.9);
+
+  return { emaSuccess, emaTimeouts, emaLoop, e, g };
+}
+
+function smoothstep(x: number, a: number, b: number): number {
+  const t = clamp((x - a) / (b - a), 0, 1);
   return t * t * (3 - 2 * t);
-};
-
-const frictionBudget = (failurePressure: number, timeoutPressure: number, loopPressure: number): number => {
-  const numerator = WEIGHT_FAIL * failurePressure + WEIGHT_TIMEOUT * timeoutPressure + WEIGHT_LOOP * loopPressure;
-  const denominator = WEIGHT_FAIL + WEIGHT_TIMEOUT + WEIGHT_LOOP;
-  return clamp(numerator / denominator, 0, 1);
-};
+}
 
 const explorationRamp = (value: number): number => {
   // Soften the curve so that the early portion of the ramp stays calm.
@@ -89,35 +102,7 @@ export const DEFAULT_CONTROL_STATE: ControlState = {
 };
 
 export const computeController = (state: ControlState, telemetry: Telemetry): ControlState => {
-  const successSample = telemetry.lastOutcomeSuccess ? 1 : 0;
-  const timeoutSample = telemetry.timeoutHappened ? 1 : 0;
-  const loopSample = clamp(telemetry.loopScore, 0, 1);
-
-  const emaSuccess = telemetry.lastOutcomeSuccess && SNAP_RESET ? 1 : ema(state.emaSuccess, successSample, ALPHA_SUCCESS);
-  const emaTimeouts = ema(state.emaTimeouts, timeoutSample, ALPHA_TIMEOUT);
-  const emaLoop = ema(state.emaLoop, loopSample, ALPHA_LOOP);
-
-  const failurePressure = 1 - clamp(emaSuccess, MIN_SUCCESS_EMA, MAX_EMA);
-  const timeoutPressure = emaTimeouts;
-  const loopPressure = emaLoop;
-
-  let exploration = frictionBudget(failurePressure, timeoutPressure, loopPressure);
-
-  if (telemetry.contextWindow > 0 && telemetry.inputTokens >= 0) {
-    const usageRatio = clamp(telemetry.inputTokens / telemetry.contextWindow, 0, 1);
-    exploration = clamp(exploration + 0.1 * usageRatio, 0, 1);
-  }
-
-  const e = telemetry.lastOutcomeSuccess && SNAP_RESET ? 0 : explorationRamp(exploration);
-  const g = telemetry.lastOutcomeSuccess && SNAP_RESET ? 0 : smoothstep(e, 0.55, 0.9);
-
-  return {
-    emaSuccess,
-    emaTimeouts,
-    emaLoop,
-    e,
-    g,
-  };
+  return stepControl(state, telemetry);
 };
 
 const adjustTemperature = (base: number, exploration: number, role: Role): number => {
