@@ -49,6 +49,8 @@ export class AgentContext {
   stateMessageAdded: boolean;
   history: AgentStepHistory;
   finalAnswer: string | null;
+  currentPlannerInterval: number;
+  lastPlannerAdjustmentStep: number;
 
   constructor(
     taskId: string,
@@ -73,6 +75,8 @@ export class AgentContext {
     this.stateMessageAdded = false;
     this.history = new AgentStepHistory();
     this.finalAnswer = null;
+    this.currentPlannerInterval = this.options.planningInterval;
+    this.lastPlannerAdjustmentStep = -1;
   }
 
   async emitEvent(actor: Actors, state: ExecutionState, eventDetails: string) {
