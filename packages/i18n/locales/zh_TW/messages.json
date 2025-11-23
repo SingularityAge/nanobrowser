@@ -238,6 +238,9 @@
   "options_general_enableVision_desc": {
     "message": "使用大型語言模型的視覺能力 (將會消耗更多的 token 以取得更好的結果)"
   },
+  "options_general_visionAlwaysOn": {
+    "message": "為了獲得最佳結果，視覺功能會始終保持啟用。"
+  },
   "options_general_displayHighlights": {
     "message": "顯示醒目標示"
   },
