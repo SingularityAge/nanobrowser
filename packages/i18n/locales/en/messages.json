@@ -238,6 +238,9 @@
   "options_general_enableVision_desc": {
     "message": "Use vision capability of LLMs (consumes more tokens for better results)"
   },
+  "options_general_visionAlwaysOn": {
+    "message": "Vision is always enabled for the best browsing results."
+  },
   "options_general_displayHighlights": {
     "message": "Display Highlights"
   },
