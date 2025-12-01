@@ -185,7 +185,7 @@ export default function ChatInput({
   return (
     <form
       onSubmit={handleSubmit}
-      className={`overflow-hidden rounded-lg border transition-colors ${disabled ? 'cursor-not-allowed' : 'focus-within:border-sky-400 hover:border-sky-400'} ${isDarkMode ? 'border-slate-700' : ''}`}
+      className={`overflow-hidden rounded-2xl border-2 transition-colors ${disabled ? 'cursor-not-allowed' : 'focus-within:border-amber-500 hover:border-amber-400'} ${isDarkMode ? 'border-slate-600' : 'border-amber-400'}`}
       aria-label={t('chat_input_form')}>
       <div className="flex flex-col">
         {/* File attachments display */}
@@ -321,8 +321,20 @@ export default function ChatInput({
               type="submit"
               disabled={isSendButtonDisabled}
               aria-disabled={isSendButtonDisabled}
-              className={`rounded-md bg-[#19C2FF] px-3 py-1 text-white transition-colors hover:enabled:bg-[#0073DC] ${isSendButtonDisabled ? 'cursor-not-allowed opacity-50' : ''}`}>
-              {t('chat_buttons_send')}
+              className={`flex size-8 items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white transition-colors hover:enabled:from-amber-600 hover:enabled:to-orange-600 ${isSendButtonDisabled ? 'cursor-not-allowed opacity-50' : ''}`}>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="size-4"
+                aria-hidden="true">
+                <path
+                  fillRule="evenodd"
+                  d="M12 3.75a.75.75 0 01.75.75v14.69l5.22-5.22a.75.75 0 111.06 1.06l-6.5 6.5a.75.75 0 01-1.06 0l-6.5-6.5a.75.75 0 111.06-1.06l5.22 5.22V4.5a.75.75 0 01.75-.75z"
+                  clipRule="evenodd"
+                  transform="rotate(180 12 12)"
+                />
+              </svg>
             </button>
           )}
         </div>
